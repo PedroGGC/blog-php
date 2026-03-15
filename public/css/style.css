@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --color-primary: #0f172a; /* Slate 900 */
   --color-primary-strong: #020617; /* Slate 950 */
   --color-bg: #f8fafc; /* Slate 50 */
@@ -188,8 +188,13 @@ h2 {
 .hero {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 16px;
+}
+
+#hero-title-react,
+#hero-subtitle-react {
+  text-align: left;
 }
 
 .hero-subtitle {
@@ -611,12 +616,38 @@ button:not(.avatar-editor):not(.action-btn):hover,
   font-size: 0.9rem;
 }
 
+.dropdown-section-title {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.dropdown-clear {
+  width: calc(100% - 2rem);
+  margin: 0.75rem 1rem 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-clear:hover {
+  background: var(--color-border);
+}
+
 .notification-count {
   position: absolute;
   top: -2px;
   right: -2px;
-  background-color: var(--color-danger);
-  color: #fff;
+  background-color: #94a3b8;
+  color: #0f172a;
   font-size: 0.65rem;
   font-weight: 700;
   border-radius: 10px;
@@ -663,6 +694,8 @@ button:not(.avatar-editor):not(.action-btn):hover,
 }
 
 [data-theme="dark"] .notification-count {
+  background-color: #6b7280;
+  color: #f8fafc;
   border-color: var(--color-surface-hover); /* to match the header background */
 }
 
@@ -1352,12 +1385,14 @@ body.page-leaving-down {
 
 .post-cover-wrap .cover-blur {
   position: absolute;
-  inset: -2px;
+  top: 50%;
+  left: 50%;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   filter: blur(20px) brightness(0.4) saturate(1.2);
-  transform: scale(1.05);
+  transform: translate(-50%, -50%) scale(1.1);
   z-index: 0;
 }
 
@@ -1546,3 +1581,30 @@ body.page-leaving-down {
     grid-template-columns: 1fr;
   }
 }
+
+/* Post Editor Custom Styles */
+.font-style-1 { font-family: 'Georgia', serif; font-size: 1.15em; color: var(--color-primary); line-height: 1.4; }
+.font-style-2 { font-family: 'Courier New', monospace; background: var(--color-surface-hover); padding: 0.1rem 0.4rem; border-radius: 4px; border: 1px solid var(--color-border); }
+.font-style-3 { font-family: 'Times New Roman', serif; font-style: italic; text-decoration: underline; color: var(--color-text-muted); }
+
+.post-preview { border-style: dashed !important; border-width: 2px !important; margin-top: 1.5rem; }
+#preview-body { font-size: 1.05rem; line-height: 1.7; white-space: pre-wrap; }
+
+[data-theme="dark"] .font-style-2 { background: #343536; }
+
+/* === TAMANHOS DOS TÍTULOS DOS POSTS === */
+/* Título dos posts na página inicial e na aba "Posts" do usuário */
+.post-card h2 {
+  font-size: 2rem !important;
+  line-height: 1.2;
+}
+
+/* Título gigante dentro da página do post (post_view.php) */
+.post-full h1 {
+  font-size: 3.5rem !important;
+  line-height: 1.1;
+  margin-bottom: 1rem;
+}
+
+
+

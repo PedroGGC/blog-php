@@ -1,51 +1,97 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const bellBtn = document.getElementById("bell-toggle");
-  const badge = document.getElementById("bell-badge");
-  const dropdown = document.getElementById("notifications-dropdown");
+(function () {
+  "use strict";
 
-  // Avatar dropdown
-  const avatarBtn = document.getElementById("avatar-toggle");
-  const profileDropdown = document.getElementById("profile-dropdown");
+  let hasFetched = false;
+  let isOpen = false;
+  let pollingId = null;
+  let handlersBound = false;
 
+  const getElements = () => ({
+    bellBtn: document.getElementById("bell-toggle"),
+    badge: document.getElementById("bell-badge"),
+    dropdown: document.getElementById("notifications-dropdown"),
+    avatarBtn: document.getElementById("avatar-toggle"),
+    profileDropdown: document.getElementById("profile-dropdown"),
+  });
 
-    if (!bellBtn || !dropdown) {
-        console.warn("Notifications elements missing, aborting");
-        return;
+  function getBasePath() {
+    const path = window.location.pathname || "";
+    if (path.includes("/src/actions/")) {
+      return "../../";
     }
+    if (path.includes("/pages/") || path.includes("/auth/")) {
+      return "../";
+    }
+    return "";
+  }
 
-
-    let hasFetched = false;
-    let isOpen = false;
-
-  // Polling function
   async function fetchNotifications() {
+    const { badge, dropdown } = getElements();
+    if (!dropdown) {
+      return;
+    }
     try {
-      const response = await fetch("api/notifications.php?action=fetch");
+      const basePath = getBasePath();
+      const response = await fetch(`${basePath}src/actions/notifications.php?action=fetch`, {
+        credentials: "same-origin",
+      });
       if (response.ok) {
         const data = await response.json();
+        const unread = Array.isArray(data.unread) ? data.unread : [];
+        const read = Array.isArray(data.read) ? data.read : [];
 
-        // Update badge
         if (data.unread_count > 0 && badge) {
           badge.style.display = "flex";
-          badge.textContent =
-            data.unread_count > 99 ? "99+" : data.unread_count;
+          badge.textContent = data.unread_count > 99 ? "99+" : data.unread_count;
         } else if (badge) {
           badge.style.display = "none";
         }
 
-        // Render list
-        if (data.notifications.length === 0) {
-          dropdown.innerHTML =
-            '<div class="dropdown-empty">Não há mensagens no momento.</div>';
-        } else {
-          dropdown.innerHTML = "";
-          data.notifications.forEach((n) => {
+        dropdown.innerHTML = "";
+
+        if (unread.length === 0 && read.length === 0) {
+          dropdown.innerHTML = '<div class="dropdown-empty">Não há mensagens no momento.</div>';
+          return;
+        }
+
+        if (unread.length > 0) {
+          const unreadLabel = document.createElement("div");
+          unreadLabel.className = "dropdown-section-title";
+          unreadLabel.textContent = "Novas";
+          dropdown.appendChild(unreadLabel);
+
+          unread.forEach((n) => {
             const item = document.createElement("a");
-            item.href = "post.php?id=" + n.post_id;
-            item.className = "dropdown-item" + (!n.is_read ? " unread" : "");
-            item.innerHTML = n.message;
+            item.href = `${basePath}pages/post_view.php?id=${n.post_id}`;
+            item.className = "dropdown-item unread";
+            item.textContent = n.message;
             dropdown.appendChild(item);
           });
+        }
+
+        if (read.length > 0) {
+          const readLabel = document.createElement("div");
+          readLabel.className = "dropdown-section-title";
+          readLabel.textContent = "Visualizadas";
+          dropdown.appendChild(readLabel);
+
+          read.forEach((n) => {
+            const item = document.createElement("a");
+            item.href = `${basePath}pages/post_view.php?id=${n.post_id}`;
+            item.className = "dropdown-item";
+            item.textContent = n.message;
+            dropdown.appendChild(item);
+          });
+
+          const clearBtn = document.createElement("button");
+          clearBtn.type = "button";
+          clearBtn.className = "dropdown-clear";
+          clearBtn.textContent = "Limpar visualizadas";
+          clearBtn.addEventListener("click", async () => {
+            await clearReadNotifications();
+            fetchNotifications();
+          });
+          dropdown.appendChild(clearBtn);
         }
       }
     } catch (e) {
@@ -53,17 +99,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Mark as read
   async function markAsRead() {
+    const { badge } = getElements();
     try {
+      const basePath = getBasePath();
       const formData = new FormData();
       const tokenMeta = document.querySelector('meta[name="_csrf"]');
       if (tokenMeta) {
         formData.append("_csrf", tokenMeta.getAttribute("content"));
       }
-      await fetch("api/notifications.php?action=read_all", {
+      await fetch(`${basePath}src/actions/notifications.php?action=read_all`, {
         method: "POST",
         body: formData,
+        credentials: "same-origin",
       });
       if (badge) badge.style.display = "none";
     } catch (e) {
@@ -71,79 +119,136 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Notification dropdown toggler
-  bellBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-
-    // Add physical feedback animation to bell
-    bellBtn.classList.add("bell-shake");
-    setTimeout(() => {
-	    bellBtn.classList.remove("bell-shake");
-    }, 500);
-
-    isOpen = !isOpen;
-    if (isOpen) {
-        dropdown.classList.add("is-open");
-    } else {
-        dropdown.classList.remove("is-open");
+  async function clearReadNotifications() {
+    try {
+      const basePath = getBasePath();
+      const formData = new FormData();
+      const tokenMeta = document.querySelector('meta[name="_csrf"]');
+      if (tokenMeta) {
+        formData.append("_csrf", tokenMeta.getAttribute("content"));
+      }
+      await fetch(`${basePath}src/actions/notifications.php?action=clear_read`, {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+      });
+    } catch (e) {
+      console.error(e);
     }
+  }
 
-    if (isOpen) {
-      if (profileDropdown && profileDropdown.classList.contains("is-open")) {
-        profileDropdown.classList.remove("is-open");
-      }
-
-      if (!hasFetched) {
-        dropdown.innerHTML = '<div class="dropdown-empty">Carregando...</div>';
-        fetchNotifications().then(() => {
-          markAsRead();
-        });
-        hasFetched = true;
-      } else {
-        markAsRead();
-      }
+  function ensureHandlers() {
+    if (handlersBound) {
+      return;
     }
-  });
+    handlersBound = true;
 
-  // Profile dropdown toggler
-  if (avatarBtn && profileDropdown) {
-    avatarBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const pIsOpen = profileDropdown.classList.contains("is-open");
-      
-      if (pIsOpen) {
-          profileDropdown.classList.remove("is-open");
-      } else {
-          profileDropdown.classList.add("is-open");
+    document.addEventListener("click", (e) => {
+      const bellTrigger = e.target.closest("#bell-toggle");
+      const avatarTrigger = e.target.closest("#avatar-toggle");
+      const { bellBtn, dropdown, avatarBtn, profileDropdown } = getElements();
+
+        if (bellTrigger) {
+          e.stopPropagation();
+          if (!bellBtn || !dropdown) {
+            return;
+          }
+          positionDropdown(bellBtn, dropdown);
+          bellBtn.classList.add("bell-shake");
+        setTimeout(() => {
+          bellBtn.classList.remove("bell-shake");
+        }, 500);
+
+        isOpen = !isOpen;
+        dropdown.classList.toggle("is-open", isOpen);
+
+        if (isOpen) {
+          if (profileDropdown && profileDropdown.classList.contains("is-open")) {
+            profileDropdown.classList.remove("is-open");
+          }
+
+          if (!hasFetched) {
+            dropdown.innerHTML = '<div class="dropdown-empty">Carregando...</div>';
+            fetchNotifications().then(async () => {
+              await markAsRead();
+              fetchNotifications();
+            });
+            hasFetched = true;
+          } else {
+            markAsRead().then(fetchNotifications);
+          }
+        }
+        return;
       }
 
-      if (!pIsOpen && isOpen) {
+      if (avatarTrigger) {
+        e.stopPropagation();
+        if (!profileDropdown) {
+          return;
+        }
+        const pIsOpen = profileDropdown.classList.contains("is-open");
+        profileDropdown.classList.toggle("is-open", !pIsOpen);
+        if (!pIsOpen && isOpen && dropdown) {
+          dropdown.classList.remove("is-open");
+          isOpen = false;
+        }
+        return;
+      }
+
+      if (isOpen && dropdown && bellBtn && !dropdown.contains(e.target) && !bellBtn.contains(e.target)) {
         dropdown.classList.remove("is-open");
         isOpen = false;
+      }
+
+      if (
+        profileDropdown &&
+        profileDropdown.classList.contains("is-open") &&
+        avatarBtn &&
+        !profileDropdown.contains(e.target) &&
+        !avatarBtn.contains(e.target)
+      ) {
+        profileDropdown.classList.remove("is-open");
       }
     });
   }
 
-  // Close dropdowns when clicking outside
-  document.addEventListener("click", (e) => {
-    if (isOpen && !dropdown.contains(e.target) && !bellBtn.contains(e.target)) {
-      dropdown.classList.remove("is-open");
-      isOpen = false;
+  function positionDropdown(bellBtn, dropdown) {
+    const rect = bellBtn.getBoundingClientRect();
+    const dropdownWidth = dropdown.offsetWidth || 320;
+    const padding = 12;
+    let left = rect.right + 12;
+    if (left + dropdownWidth > window.innerWidth - padding) {
+      left = Math.max(padding, rect.left - dropdownWidth - 12);
+    }
+    const top = Math.min(Math.max(rect.top, padding), window.innerHeight - padding);
+    dropdown.style.position = "fixed";
+    dropdown.style.left = `${left}px`;
+    dropdown.style.top = `${top}px`;
+    dropdown.style.right = "auto";
+  }
+
+  function initNotifications() {
+    const { bellBtn, dropdown } = getElements();
+    if (!bellBtn || !dropdown) {
+      return;
     }
 
-    if (
-      profileDropdown &&
-      profileDropdown.classList.contains("is-open") &&
-      !profileDropdown.contains(e.target) &&
-      !avatarBtn.contains(e.target)
-    ) {
-      profileDropdown.classList.remove("is-open");
+    ensureHandlers();
+    hasFetched = false;
+    isOpen = false;
+
+    if (!pollingId) {
+      pollingId = setInterval(fetchNotifications, 30000);
     }
-  });
 
-  // Initial pull
-  fetchNotifications();
+    fetchNotifications();
+  }
 
-  // Poll every 30 seconds
-  setInterval(fetchNotifications, 30000);
-});
+  window.initNotifications = initNotifications;
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initNotifications, { once: true });
+  } else {
+    initNotifications();
+  }
+})();

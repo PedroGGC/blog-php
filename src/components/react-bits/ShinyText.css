@@ -1,0 +1,15 @@
+.shiny-text {
+  display: inline-block;
+  background-clip: text;
+  -webkit-background-clip: text;
+  background-repeat: no-repeat;
+  transition: background-position 0s linear;
+  line-height: inherit;
+  font-size: inherit;
+  vertical-align: baseline;
+}
+
+.shiny-text.disabled {
+  background-image: none !important;
+  -webkit-text-fill-color: currentcolor !important;
+}

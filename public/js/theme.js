@@ -19,14 +19,16 @@
 
   apply(getPreferred());
 
-  document.addEventListener("DOMContentLoaded", function () {
-    var toggleButtons = document.querySelectorAll(".theme-toggle");
-    toggleButtons.forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var current = html.getAttribute("data-theme") || "light";
-        var nextTheme = current === "dark" ? "light" : "dark";
-        apply(nextTheme);
-      });
-    });
+  function handleToggleClick() {
+    var current = html.getAttribute("data-theme") || "light";
+    var nextTheme = current === "dark" ? "light" : "dark";
+    apply(nextTheme);
+  }
+
+  document.addEventListener("click", function (event) {
+    var btn = event.target.closest(".theme-toggle");
+    if (!btn) return;
+    event.preventDefault();
+    handleToggleClick();
   });
 })();

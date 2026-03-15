@@ -35,10 +35,12 @@
 
         try {
             const body = new URLSearchParams({ item_type: itemType, item_id: itemId, vote, _csrf: csrfToken });
-            const res  = await fetch('vote.php', { method: 'POST', body });
+            const res  = await fetch('src/actions/vote.php', { method: 'POST', body });
 
             if (res.status === 401) {
-                window.location.href = 'login.php';
+                // Determine if we need to go up a level
+                const isSubdir = window.location.pathname.includes('/pages/');
+                window.location.href = (isSubdir ? '../' : '') + 'auth/login.php';
                 return;
             }
 
